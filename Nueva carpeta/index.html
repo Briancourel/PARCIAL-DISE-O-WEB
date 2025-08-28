@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Fotos</title>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.11.1/themes/smoothness/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script>
+        const url = 'https://jsonplaceholder.typicode.com/photos'
+
+        window.onload = () => {
+            $('#popUp').hide();
+            getObjects();
+        }
+
+        function loadObjects() {
+            return new Promise((resolve, reject) => {
+                const request = new XMLHttpRequest()
+                request.open('GET', url)
+                request.responseType = 'json'
+                request.onload = () => request.status === 200 ? resolve(request.response) : reject(Error(request.statusText))
+                request.onerror = () => reject(Error('Error de red inesperado.'))
+                request.send()
+            })
+        }
+
+        function addObject() {
+            return new Promise((resolve, reject) => {
+                const request = new XMLHttpRequest()
+                request.open('POST', url)
+                request.setRequestHeader('Content-Type','application/json')
+                const object = JSON.stringify({
+                    albumId: document.getElementById('albumId').value,
+                    title: document.getElementById('title').value,
+                    url: document.getElementById('url').value,
+                    thumbnailUrl: document.getElementById('thumbnailUrl').value
+                })
+                request.onload = () => request.status === 201 ? resolve(JSON.parse(request.response)) : reject(Error(request.statusText))
+                request.onerror = () => reject(Error('Error de red inesperado'))
+                request.send(object)
+            })
+        }
+
+        function removeObject(id) {
+            return new Promise((resolve, reject) => {
+                const request = new XMLHttpRequest()
+                request.open('DELETE', `${url}/${id}`)
+                request.onload = () => (request.status === 200 || request.status === 204) ? resolve() : reject(Error(request.statusText))
+                request.onerror = () => reject(Error('Error de red inesperado.'))
+                request.send()
+            })
+        }
+
+        function modifyObject(id) {
+            return new Promise((resolve, reject) => {
+                const request = new XMLHttpRequest()
+                request.open('PATCH', `${url}/${id}`)
+                request.setRequestHeader('Content-Type', 'application/json')
+                const object = JSON.stringify({
+                    albumId: document.getElementById('albumId2').value,
+                    title: document.getElementById('title2').value,
+                    url: document.getElementById('url2').value,
+                    thumbnailUrl: document.getElementById('thumbnailUrl2').value
+                })
+                request.onload = () => request.status === 200 ? resolve(JSON.parse(request.response)) : reject(Error(request.statusText))
+                request.onerror = () => reject(Error('Error de red inesperado.'))
+                request.send(object)
+            })
+        }
+
+        function getObjects() {
+            loadObjects().then(response => {
+                const tbody = document.querySelector('tbody')
+                tbody.innerHTML = ''
+                response.slice(0, 10).forEach(obj => insertTr(obj))
+            }).catch(console.error)
+        }
+
+        function saveObject() {
+            if(document.getElementById('albumId').value && document.getElementById('title').value && document.getElementById('url').value && document.getElementById('thumbnailUrl').value){
+                addObject().then(insertTr).catch(console.error)
+            } else alert('Complete todos los campos.')
+        }
+
+        function deleteObject(id) {
+            removeObject(id).then(() => {
+                const row = document.getElementById(id)
+                if(row) row.remove()
+            }).catch(console.error)
+        }
+
+        function updateObject() {
+            const id = document.getElementById('id2').value
+            if(document.getElementById('albumId2').value && document.getElementById('title2').value && document.getElementById('url2').value && document.getElementById('thumbnailUrl2').value){
+                modifyObject(id).then(updated => {
+                    const row = document.getElementById(updated.id)
+                    if(row){
+                        row.cells[1].innerText = updated.albumId
+                        row.cells[2].innerText = updated.title
+                        row.cells[3].innerHTML = `<a href="${updated.url}" target="_blank">${updated.url}</a>`
+                        row.cells[4].innerHTML = `<a href="${updated.thumbnailUrl}" target="_blank">${updated.thumbnailUrl}</a>`
+                    }
+                    $('#popUp').dialog('close')
+                }).catch(console.error)
+            } else alert('Complete todos los campos.')
+        }
+
+        function viewObject(id) {
+            const row = document.getElementById(id)
+            document.getElementById('id2').value = id
+            document.getElementById('albumId2').value = row.cells[1].innerText
+            document.getElementById('title2').value = row.cells[2].innerText
+            document.getElementById('url2').value = row.cells[3].innerText
+            document.getElementById('thumbnailUrl2').value = row.cells[4].innerText
+
+            $('#popUp').dialog({modal:true,width:400,title:'Editar Foto'})
+        }
+
+        function insertTr(obj) {
+            const tbody = document.querySelector('tbody')
+            const row = tbody.insertRow()
+            row.id = obj.id
+            row.insertCell().innerText = obj.id
+            row.insertCell().innerText = obj.albumId
+            row.insertCell().innerText = obj.title
+            row.insertCell().innerHTML = `<a href="${obj.url}" target="_blank">${obj.url}</a>`
+            row.insertCell().innerHTML = `<a href="${obj.thumbnailUrl}" target="_blank">${obj.thumbnailUrl}</a>`
+            row.insertCell().innerHTML = `<button onclick='viewObject(${obj.id})'>VIEW</button>`
+            row.insertCell().innerHTML = `<button onclick='deleteObject(${obj.id})'>DELETE</button>`
+            clearInputs()
+        }
+
+        function clearInputs(){
+            document.getElementById('albumId').value=''
+            document.getElementById('title').value=''
+            document.getElementById('url').value=''
+            document.getElementById('thumbnailUrl').focus()
+        }
+    </script>
+</head>
+<body>
+    <h2>Gestión de Fotos</h2>
+    <table border="1" style="border-collapse: collapse; width: 100%;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>ALBUMID</th>
+                <th>TITLE</th>
+                <th>URL</th>
+                <th>THUMBNAILURL</th>
+                <th colspan="2">ACCIONES</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot>
+            <tr>
+                <td></td>
+                <td><input id="albumId"></td>
+                <td><input id="title"></td>
+                <td><input id="url"></td>
+                <td><input id="thumbnailUrl"></td>
+                <td colspan="2"><button onclick="saveObject()">ADD</button></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div id="popUp" style="display:none; overflow-x:hidden;">
+        <table>
+            <tr><td>ID</td><td><input id="id2" readonly></td></tr>
+            <tr><td>ALBUMID</td><td><input id="albumId2"></td></tr>
+            <tr><td>TITLE</td><td><input id="title2"></td></tr>
+            <tr><td>URL</td><td><input id="url2"></td></tr>
+            <tr><td>THUMBNAILURL</td><td><input id="thumbnailUrl2"></td></tr>
+            <tr><td colspan="2" style="text-align:center;"><button onclick="updateObject()">UPDATE</button></td></tr>
+        </table>
+    </div>
+</body>
+</html>
